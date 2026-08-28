@@ -1,0 +1,2977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sabrina's Case Tracker</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+    <style>
+        :root {
+            --bg-primary: #F6F1E9;
+            --bg-secondary: #FFFDFA;
+            --text-primary: #2B231C;
+            --text-secondary: #8A7A69;
+            --border: #E4D8C6;
+            --accent: #8A5A34;
+            --accent-hover: #6E4626;
+            --accent-light: #F0E2CE;
+            --accent-contrast: #FFFFFF;
+
+            --status-active: #1F9D6C;
+            --status-pending: #D98A2B;
+            --status-overdue: #D14B43;
+            --status-resolved: #918C99;
+
+            --header-bg: linear-gradient(150deg, #2A2019 0%, #4A3423 100%);
+            --header-text: #F5EBDD;
+            --header-text-dim: rgba(245, 235, 221, 0.68);
+            --header-pill: rgba(255, 255, 255, 0.08);
+            --header-pill-border: rgba(255, 255, 255, 0.14);
+            --header-pill-active: rgba(255, 255, 255, 0.16);
+
+            --shadow-sm: 0 1px 2px rgba(43, 35, 28, 0.06), 0 1px 3px rgba(43, 35, 28, 0.05);
+            --shadow-md: 0 8px 24px rgba(43, 35, 28, 0.09);
+            --shadow-lg: 0 16px 40px rgba(43, 35, 28, 0.16);
+
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 18px;
+
+            --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-display: 'Fraunces', Georgia, serif;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --bg-primary: #1B1610;
+                --bg-secondary: #241D15;
+                --text-primary: #F1E7D8;
+                --text-secondary: #AA9C89;
+                --border: #392E22;
+                --accent: #D3A467;
+                --accent-hover: #E2B87F;
+                --accent-light: rgba(211, 164, 103, 0.14);
+                --accent-contrast: #1B1610;
+                --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+                --shadow-md: 0 10px 28px rgba(0, 0, 0, 0.38);
+                --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.5);
+            }
+        }
+
+        :root[data-theme="dark"] {
+            --bg-primary: #1B1610;
+            --bg-secondary: #241D15;
+            --text-primary: #F1E7D8;
+            --text-secondary: #AA9C89;
+            --border: #392E22;
+            --accent: #D3A467;
+            --accent-hover: #E2B87F;
+            --accent-light: rgba(211, 164, 103, 0.14);
+            --accent-contrast: #1B1610;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 10px 28px rgba(0, 0, 0, 0.38);
+            --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.5);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-body);
+            font-size: 14px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .header {
+            background: var(--header-bg);
+            color: var(--header-text);
+            padding: 20px 32px;
+            box-shadow: var(--shadow-md);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .header h1 {
+            font-family: var(--font-display);
+            font-size: 25px;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+            text-wrap: balance;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* Overview/Cases/Timeline, Sync, and + New Case all sit in this one
+           row — give them a shared explicit height instead of relying on
+           each one's own padding to happen to match, since it didn't:
+           + New Case (.add-btn) also carries a margin-top meant for
+           trailing "Add" buttons elsewhere on the page, which pushed it
+           down out of line with its neighbors here. */
+        .header-controls .sync-btn,
+        .header-controls .add-btn {
+            height: 40px;
+            box-sizing: border-box;
+            display: inline-flex;
+            align-items: center;
+            margin-top: 0;
+        }
+
+        .header-controls .view-toggle {
+            height: 40px;
+            box-sizing: border-box;
+        }
+
+        .sync-menu {
+            position: relative;
+            display: inline-block;
+        }
+
+        .sync-btn {
+            padding: 9px 16px;
+            background: var(--header-pill);
+            border: 1px solid var(--header-pill-border);
+            color: var(--header-text);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.15s ease;
+        }
+
+        .sync-btn:hover {
+            background: var(--header-pill-active);
+        }
+
+        .sync-menu-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            min-width: 190px;
+            box-shadow: var(--shadow-lg);
+            z-index: 100;
+            margin-top: 10px;
+            overflow: hidden;
+            padding: 6px;
+        }
+
+        .sync-menu-dropdown.active {
+            display: block;
+        }
+
+        .sync-menu-item {
+            display: block;
+            width: 100%;
+            padding: 10px 12px;
+            background: none;
+            border: none;
+            border-radius: var(--radius-sm);
+            text-align: left;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-family: var(--font-body);
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.15s ease;
+        }
+
+        .sync-menu-item:hover {
+            background: var(--accent-light);
+            color: var(--accent);
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 3px;
+            background: var(--header-pill);
+            border: 1px solid var(--header-pill-border);
+            padding: 3px;
+            border-radius: var(--radius-sm);
+        }
+
+        .view-btn {
+            padding: 7px 14px;
+            border: none;
+            background: transparent;
+            color: var(--header-text-dim);
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.15s ease;
+        }
+
+        .view-btn.active {
+            background: var(--header-pill-active);
+            color: var(--header-text);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .view-btn:hover:not(.active) {
+            color: var(--header-text);
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .search-box {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-family: var(--font-body);
+            font-size: 14px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: border-color 0.15s ease;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .search-box input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .case-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .case-item {
+            padding: 13px 14px;
+            margin-bottom: 6px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-align: left;
+        }
+
+        .case-item:hover {
+            background: var(--accent-light);
+            border-color: var(--accent);
+            transform: translateX(2px);
+        }
+
+        .case-item.active {
+            background: var(--accent-light);
+            border-color: var(--accent);
+            font-weight: 600;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .case-item-name {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 5px;
+            color: var(--text-primary);
+        }
+
+        .case-item-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .view-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 32px;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 18px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            padding: 14px 12px;
+            border-radius: var(--radius-lg);
+            text-align: center;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .stat-card.filterable {
+            cursor: pointer;
+            transition: transform 0.12s ease, box-shadow 0.12s ease;
+        }
+
+        .stat-card.filterable:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md, 0 4px 10px rgba(0,0,0,0.08));
+        }
+
+        .stat-card.filterable.active-filter {
+            outline: 2px solid var(--accent);
+            outline-offset: -1px;
+        }
+
+        .stat-number {
+            font-family: var(--font-display);
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 4px;
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            font-weight: 700;
+        }
+
+        .upcoming-section {
+            margin-top: 32px;
+        }
+
+        .upcoming-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            padding: 16px 18px;
+            margin-bottom: 10px;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+            transition: all 0.15s ease;
+        }
+
+        .upcoming-item:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-1px);
+        }
+
+        .upcoming-case {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .upcoming-action {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .upcoming-date {
+            font-size: 12px;
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .dashboard-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 22px;
+            cursor: pointer;
+            transition: all 0.18s ease;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .dashboard-card:hover {
+            box-shadow: var(--shadow-md);
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        .dashboard-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 14px;
+            gap: 12px;
+        }
+
+        .dashboard-card-title {
+            font-family: var(--font-display);
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-wrap: balance;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px 5px 8px;
+            border-radius: 20px;
+            font-size: 10.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .status-badge::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+            flex-shrink: 0;
+        }
+
+        .status-active {
+            background: rgba(31, 157, 108, 0.13);
+            color: var(--status-active);
+        }
+
+        .status-pending {
+            background: rgba(217, 138, 43, 0.14);
+            color: var(--status-pending);
+        }
+
+        .status-overdue {
+            background: rgba(209, 75, 67, 0.14);
+            color: var(--status-overdue);
+        }
+
+        .status-resolved {
+            background: rgba(145, 140, 153, 0.16);
+            color: var(--status-resolved);
+        }
+
+        .next-action-section {
+            background: var(--accent-light);
+            border-left: 3px solid var(--accent);
+            padding: 12px 14px;
+            border-radius: var(--radius-sm);
+            margin: 12px 0;
+        }
+
+        .next-action-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .next-action-text {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .case-info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .info-value {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 4px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+
+        .tab {
+            padding: 11px 18px;
+            border: none;
+            background: none;
+            color: var(--text-secondary);
+            font-family: var(--font-body);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .tab:hover {
+            color: var(--text-primary);
+        }
+
+        .tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            position: relative;
+        }
+
+        .timeline-item {
+            display: flex;
+            gap: 18px;
+            position: relative;
+            padding-bottom: 22px;
+        }
+
+        .timeline-item:not(:last-child)::before {
+            content: '';
+            position: absolute;
+            left: 7px;
+            top: 18px;
+            bottom: 0;
+            width: 1.5px;
+            background: var(--border);
+        }
+
+        .timeline-marker {
+            width: 16px;
+            height: 16px;
+            background: var(--bg-secondary);
+            border: 3px solid var(--accent);
+            border-radius: 50%;
+            margin-top: 2px;
+            flex-shrink: 0;
+            z-index: 1;
+        }
+
+        .timeline-content {
+            flex: 1;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 14px 16px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .timeline-date {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-bottom: 5px;
+        }
+
+        .timeline-title {
+            font-size: 14.5px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .timeline-description {
+            font-size: 13px;
+            line-height: 1.55;
+            color: var(--text-secondary);
+        }
+
+        .timeline-description-list {
+            font-size: 13px;
+            line-height: 1.55;
+            color: var(--text-secondary);
+            margin: 4px 0 0 18px;
+            padding: 0;
+        }
+
+        .timeline-description-list li {
+            margin-bottom: 3px;
+        }
+
+        .add-btn {
+            padding: 10px 18px;
+            background: var(--accent);
+            color: var(--accent-contrast);
+            border: 1px solid transparent;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-family: var(--font-body);
+            font-size: 14px;
+            font-weight: 700;
+            transition: all 0.15s ease;
+            margin-top: 20px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .add-btn:hover {
+            background: var(--accent-hover);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-1px);
+        }
+
+        .documents-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .document-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
+            text-align: left;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            transition: border-color 0.15s ease;
+        }
+
+        .document-card:hover {
+            border-color: var(--accent);
+        }
+
+        .document-icon {
+            font-size: 16px;
+            line-height: 1.4;
+        }
+
+        .document-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            word-break: break-word;
+        }
+
+        .document-date {
+            font-size: 11.5px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            padding-top: 2px;
+        }
+
+        .item-actions {
+            display: flex;
+            gap: 2px;
+            flex-shrink: 0;
+        }
+
+        .icon-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            padding: 3px 6px;
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            transition: all 0.15s ease;
+            line-height: 1;
+        }
+
+        .icon-btn:hover {
+            background: var(--accent-light);
+            color: var(--accent);
+        }
+
+        .icon-btn.danger:hover {
+            background: rgba(192, 57, 43, 0.12);
+            color: #C0392B;
+        }
+
+        .tasks-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .task-item {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            padding: 13px 14px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+            transition: all 0.15s ease;
+        }
+
+        .task-item:hover {
+            border-color: var(--accent);
+        }
+
+        .task-checkbox {
+            margin-top: 4px;
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        .task-content {
+            flex: 1;
+        }
+
+        .task-text {
+            font-size: 14px;
+            color: var(--text-primary);
+            word-break: break-word;
+        }
+
+        .task-item.completed .task-text {
+            text-decoration: line-through;
+            color: var(--text-secondary);
+        }
+
+        .task-due {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 70px 32px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 44px;
+            margin-bottom: 16px;
+            opacity: 0.4;
+        }
+
+        .empty-state-title {
+            font-family: var(--font-display);
+            font-size: 19px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(20, 18, 26, 0.55);
+            backdrop-filter: blur(2px);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        /* The Yes/No confirm dialog (showConfirm()) is often opened from
+           inside another already-open modal (e.g. clicking Import). Without
+           this, both sit at the same z-index and whichever is later in the
+           HTML paints on top — which could bury the confirm dialog behind
+           the modal that opened it, making it invisible and unclickable,
+           so the action looked "stuck"/unresponsive even though it was
+           correctly waiting on a confirmation the user could never see. */
+        #confirmModal {
+            z-index: 2000;
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .modal-title {
+            font-family: var(--font-display);
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            color: var(--text-primary);
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 10px 13px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-family: var(--font-body);
+            font-size: 14px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: border-color 0.15s ease;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 24px;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        .form-actions .add-btn {
+            margin-top: 0;
+        }
+
+        .btn-secondary {
+            padding: 10px 16px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-family: var(--font-body);
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.15s ease;
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        ::-webkit-scrollbar {
+            width: 9px;
+            height: 9px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+
+        /* --- Login gate --- */
+        .login-screen {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-primary);
+            z-index: 5000;
+            padding: 20px;
+        }
+        .login-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            padding: 40px 36px;
+            max-width: 360px;
+            width: 100%;
+            text-align: center;
+        }
+        .login-box h1 {
+            font-family: var(--font-display);
+            font-size: 26px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        .login-box p {
+            font-size: 13.5px;
+            color: var(--text-secondary);
+            margin-bottom: 22px;
+        }
+        .login-box input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-family: var(--font-body);
+            font-size: 15px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            margin-bottom: 14px;
+            text-align: center;
+        }
+        .login-box input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        .login-box button {
+            width: 100%;
+            padding: 12px 14px;
+            border: none;
+            border-radius: var(--radius-sm);
+            background: var(--accent);
+            color: var(--accent-contrast);
+            font-family: var(--font-body);
+            font-weight: 600;
+            font-size: 14.5px;
+            cursor: pointer;
+        }
+        .login-box button:hover {
+            background: var(--accent-hover);
+        }
+        .login-error {
+            display: none;
+            color: var(--status-overdue);
+            font-size: 13px;
+            margin: -6px 0 14px;
+        }
+        .login-error.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
+<!-- Vendored PDF.js (pdfjs-dist 3.11.174), inlined so PDF pages can be
+     rendered to <canvas> without relying on the browser's native PDF
+     viewer plugin, which is blocked inside this sandboxed page. Running
+     the worker script as a plain page script (not spawned via new Worker)
+     makes pdf.js use its built-in main-thread fallback automatically. -->
+
+
+
+<div class="login-screen" id="loginScreen">
+    <div class="login-box">
+        <h1>Sabrina's Case Tracker</h1>
+        <p>Enter the password to continue</p>
+        <div class="login-error" id="loginError">Incorrect password</div>
+        <input type="password" id="passwordInput" placeholder="Password" autocomplete="off">
+        <button id="loginBtn">Continue</button>
+    </div>
+</div>
+
+<div id="app" style="display: none;">
+    <div class="header">
+        <h1>Case Tracker</h1>
+        <div class="header-controls">
+            <div class="view-toggle">
+                <button class="view-btn active" data-view="dashboard">Overview</button>
+                <button class="view-btn" data-view="list">Cases</button>
+                <button class="view-btn" data-view="timeline">Timeline</button>
+            </div>
+            <div class="sync-menu">
+                <button class="sync-btn" id="syncMenuBtn">☁️ Sync</button>
+                <div class="sync-menu-dropdown" id="syncMenuDropdown">
+                    <button class="sync-menu-item" id="exportBtn">Export to File</button>
+                </div>
+            </div>
+            <button class="add-btn" id="newCaseBtn">+ New Case</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Search cases...">
+            </div>
+            <div class="case-list" id="caseList">
+                <!-- Cases will be populated here -->
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="view-container" id="viewContainer">
+                <div id="dashboardView" class="view"></div>
+
+                <div id="timelineView" class="view" style="display: none;"></div>
+
+<div id="caseDetailView" style="display: none;">
+                    <div id="caseHeader">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 16px; flex-wrap: wrap;">
+                            <div>
+                                <h2 id="caseTitle" style="font-family: var(--font-display); font-size: 28px; font-weight: 700; margin-bottom: 8px;"></h2>
+                                <div id="caseNumber" style="font-size: 14px; color: var(--text-secondary);"></div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div id="caseStatus"></div>
+                                <button class="btn-secondary" id="editCaseBtn" style="height: 34px; padding: 0 14px; font-size: 13px; display: inline-flex; align-items: center;">Edit Case</button>
+                                <button class="icon-btn danger" id="deleteCaseBtn" style="height: 34px; width: 34px; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0; display: inline-flex; align-items: center; justify-content: center;" title="Delete case">🗑</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="case-info-grid" id="caseInfoGrid"></div>
+
+                    <div class="tabs">
+                        <button class="tab active" data-tab="overview">Overview</button>
+                        <button class="tab" data-tab="timeline">Timeline</button>
+                        <button class="tab" data-tab="documents">Documents</button>
+                        <button class="tab" data-tab="tasks">To Do</button>
+                        <button class="tab" data-tab="notes">Notes</button>
+                    </div>
+
+                    <div id="overview" class="tab-content active">
+                        <div id="overviewContent"></div>
+                    </div>
+
+                    <div id="timeline" class="tab-content">
+                        <div id="timelineContent" class="timeline"></div>
+                        <button class="add-btn" id="addTimelineBtn">+ Add Timeline Entry</button>
+                    </div>
+
+                    <div id="documents" class="tab-content">
+                        <div id="dropZone" style="border: 1.5px dashed var(--accent); border-radius: var(--radius-lg); padding: 32px 20px; text-align: center; margin-bottom: 20px; background: var(--accent-light); cursor: pointer; transition: all 0.2s;">
+                            <div style="font-size: 32px; margin-bottom: 12px;">📁</div>
+                            <div style="font-weight: 600; color: var(--accent); margin-bottom: 4px;">Drag & drop documents here, or click to browse</div>
+                            <div style="font-size: 13px; color: var(--text-secondary);">PDF, Word, text files — stored in the tracker so you can view/download them again later</div>
+                        </div>
+                        <input type="file" id="documentFileInput" multiple style="display: none;">
+                        <div id="documentsContent"></div>
+                        <button class="add-btn" id="addDocumentBtn">+ Add Document Manually</button>
+                    </div>
+
+                    <div id="tasks" class="tab-content">
+                        <div id="tasksContent" class="tasks-list"></div>
+                        <button class="add-btn" id="addTaskBtn">+ Add To-Do</button>
+                    </div>
+
+                    <div id="notes" class="tab-content">
+                        <textarea id="notesContent" class="form-textarea" placeholder="Add notes for this case..."></textarea>
+                        <div style="display: flex; align-items: center; gap: 12px; margin-top: 8px;">
+                            <button class="add-btn" id="saveNotesBtn">Save Notes</button>
+                            <span id="notesSaveStatus" style="font-size: 13px; color: var(--text-secondary);"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden file input -->
+    <!-- Toast notifications — replaces alert(), which the artifact sandbox silently swallows -->
+    <div id="toastContainer" style="position: fixed; bottom: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column-reverse; gap: 10px; max-width: min(360px, calc(100vw - 40px));"></div>
+</div><!-- /#app -->
+
+    <!-- Custom confirm modal — replaces confirm(), which the artifact sandbox also silently swallows -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content" style="max-width: 420px;">
+            <div class="modal-title" id="confirmModalTitle">Are you sure?</div>
+            <p id="confirmModalMessage" style="font-size: 14px; color: var(--text-secondary); margin-bottom: 24px; line-height: 1.5;"></p>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" id="confirmModalCancel">Cancel</button>
+                <button type="button" class="add-btn" id="confirmModalOk" style="margin-top: 0;">Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="previewModal" class="modal">
+        <div class="modal-content" style="max-width: 720px; max-height: 85vh; display: flex; flex-direction: column;">
+            <div class="modal-title" id="previewModalTitle" style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">Preview</div>
+            <div id="previewModalBody" style="flex: 1; overflow: auto; margin: 12px 0; min-height: 100px;"></div>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" id="previewModalClose">Close</button>
+                <button type="button" class="add-btn" id="previewModalSave" style="margin-top: 0;">⬇ Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="newCaseModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">New Case</div>
+            <form id="newCaseForm">
+                <div class="form-group">
+                    <label class="form-label">Case Name *</label>
+                    <input type="text" class="form-input" id="caseName" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Matter ID</label>
+                    <input type="text" class="form-input" id="matterId">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Client</label>
+                    <input type="text" class="form-input" id="client" value="Stewart's Automotive Group – ">
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">Defaults to Stewart's — edit to the specific subsidiary this case is against.</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Opposing Party</label>
+                    <input type="text" class="form-input" id="opposingParty" placeholder="Usually the plaintiff">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Status *</label>
+                    <select class="form-select" id="status" required>
+                        <option value="">Select status</option>
+                        <option value="active">Active</option>
+                        <option value="pending">Pending</option>
+                        <option value="overdue">Overdue</option>
+                        <option value="resolved">Resolved</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Next Action *</label>
+                    <input type="text" class="form-input" id="nextAction" placeholder="What needs to be done next?" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Case Summary</label>
+                    <textarea class="form-textarea" id="caseSummary" style="min-height: 70px;" placeholder="Optional — a couple sentences to orient yourself later"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="cancelNewCase">Cancel</button>
+                    <button type="submit" class="add-btn">Create Case</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="addTimelineModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">Add Timeline Entry</div>
+            <form id="timelineForm">
+                <div class="form-group">
+                    <label class="form-label">Date *</label>
+                    <input type="date" class="form-input" id="timelineDate" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Title *</label>
+                    <input type="text" class="form-input" id="timelineTitle" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Event Type</label>
+                    <select class="form-select" id="timelineType">
+                        <option value="Correspondence">Correspondence (email/call/letter between parties)</option>
+                        <option value="Document Sent">Document Sent</option>
+                        <option value="Document Received">Document Received</option>
+                        <option value="Signed/Agreed">Signed / Agreed</option>
+                        <option value="Filing">Filing</option>
+                        <option value="Hearing">Hearing</option>
+                        <option value="Deadline">Deadline</option>
+                        <option value="Internal Note">Internal Note</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-textarea" id="timelineDescription"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="cancelTimeline">Cancel</button>
+                    <button type="submit" class="add-btn">Add Entry</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="addDocumentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">Add Document</div>
+            <form id="documentForm">
+                <div class="form-group">
+                    <label class="form-label">Label *</label>
+                    <input type="text" class="form-input" id="docName" required placeholder="e.g. Signed Lease Agreement">
+                    <div id="docFileNameHint" style="font-size: 11px; color: var(--text-secondary); margin-top: 4px; display: none;"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Document Type</label>
+                    <select class="form-select" id="docType">
+                        <option value="">Select type</option>
+                        <option value="email">Email</option>
+                        <option value="brief">Brief</option>
+                        <option value="contract">Contract</option>
+                        <option value="motion">Motion</option>
+                        <option value="order">Order</option>
+                        <option value="correspondence">Correspondence</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Date Received</label>
+                    <input type="date" class="form-input" id="docDate">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="cancelDocument">Cancel</button>
+                    <button type="submit" class="add-btn">Add Document</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="addTaskModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">Add To-Do</div>
+            <form id="taskForm">
+                <div class="form-group">
+                    <label class="form-label">To-Do Description *</label>
+                    <input type="text" class="form-input" id="taskDescription" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Due Date</label>
+                    <input type="date" class="form-input" id="taskDue">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="cancelTask">Cancel</button>
+                    <button type="submit" class="add-btn">Add To-Do</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Data management — persisted to Supabase (one JSON blob, shared by
+        // every device that knows the password) instead of localStorage, so
+        // the data isn't tied to any particular browser or this HTML file.
+        const SUPABASE_URL = 'https://refzribpsanffsdcnalb.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_r9OZ4Y_RXuAxh0TBoo0vyg_cQddzDFP';
+        const SUPABASE_TABLE = 'sabrina_register';
+        const APP_PASSWORD = 'sfjl1';
+
+        let supabaseClient = null;
+        let appData = { cases: [] };
+        let saveTimer = null;
+
+        function getData() {
+            return appData;
+        }
+
+        // Kept synchronous (always returns true) so none of the ~30 existing
+        // call sites need to change: it updates the in-memory copy straight
+        // away (so the UI never waits on the network) and pushes the same
+        // object to Supabase in the background, debounced so rapid edits
+        // collapse into one write instead of one per keystroke.
+        function saveData(data) {
+            appData = data;
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(async () => {
+                try {
+                    const { error } = await supabaseClient.from(SUPABASE_TABLE).update({ data: appData }).eq('id', 1);
+                    if (error) throw error;
+                } catch (err) {
+                    console.error('Supabase save failed', err);
+                    showToast('Could not save — check your connection and try again.', 'warning');
+                }
+            }, 400);
+            return true;
+        }
+
+        function normalizeAppData() {
+            if (!appData || typeof appData !== 'object') appData = {};
+            if (!Array.isArray(appData.cases)) appData.cases = [];
+        }
+
+        /* ---------- LOGIN ---------- */
+        function verifyPassword() {
+            const input = document.getElementById('passwordInput');
+            const error = document.getElementById('loginError');
+            if (input.value === APP_PASSWORD) {
+                sessionStorage.setItem('caseTrackerAuthed', '1');
+                enterApp();
+            } else {
+                error.classList.add('show');
+                input.value = '';
+                input.focus();
+            }
+        }
+        document.getElementById('loginBtn').addEventListener('click', verifyPassword);
+        document.getElementById('passwordInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') verifyPassword();
+        });
+
+        function enterApp() {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('app').style.display = 'block';
+            boot();
+        }
+
+        function subscribeRealtime() {
+            supabaseClient
+                .channel('sabrina-register-changes')
+                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: SUPABASE_TABLE, filter: 'id=eq.1' }, (payload) => {
+                    if (payload.new && payload.new.data) {
+                        appData = payload.new.data;
+                        normalizeAppData();
+                        renderDashboard(appData.cases);
+                        renderCaseList(appData.cases);
+                    }
+                })
+                .subscribe();
+        }
+
+        async function boot() {
+            try {
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                const { data: row, error } = await supabaseClient.from(SUPABASE_TABLE).select('data').eq('id', 1).single();
+                if (error) throw error;
+                appData = (row && row.data && Object.keys(row.data).length) ? row.data : { cases: [] };
+                normalizeAppData();
+            } catch (err) {
+                console.error('Could not load from Supabase', err);
+                showToast('Could not connect — check your internet connection and reload the page.', 'warning');
+                appData = { cases: [] };
+            }
+            await migrateLegacyFilesToIndexedDB();
+            renderDashboard(appData.cases);
+            renderCaseList(appData.cases);
+            subscribeRealtime();
+        }
+
+        (function checkExistingSession() {
+            if (sessionStorage.getItem('caseTrackerAuthed') === '1') enterApp();
+        })();
+
+        function getStatusClass(status) {
+            return `status-${status}`;
+        }
+
+        // Toast + custom confirm — replace alert()/confirm(), which the
+        // artifact sandbox silently swallows (no "allow-modals" permission),
+        // so native dialogs never appear even though the underlying action
+        // (import, export, etc.) actually completes.
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const colors = {
+                info: { bg: 'var(--accent-light)', border: 'var(--accent)', text: 'var(--text-primary)' },
+                success: { bg: 'rgba(31, 157, 108, 0.13)', border: 'var(--status-active)', text: 'var(--status-active)' },
+                warning: { bg: 'rgba(209, 75, 67, 0.14)', border: 'var(--status-overdue)', text: 'var(--status-overdue)' }
+            };
+            const c = colors[type] || colors.info;
+            toast.style.cssText = `background:${c.bg}; border-left:3px solid ${c.border}; color:${c.text}; padding:14px 16px; border-radius:var(--radius-sm); box-shadow:var(--shadow-lg); font-size:13.5px; line-height:1.5; font-weight:500;`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.transition = 'opacity 0.3s ease';
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        function showConfirm(message, title = 'Are you sure?') {
+            return new Promise((resolve) => {
+                document.getElementById('confirmModalTitle').textContent = title;
+                document.getElementById('confirmModalMessage').textContent = message;
+                document.getElementById('confirmModal').classList.add('active');
+
+                const okBtn = document.getElementById('confirmModalOk');
+                const cancelBtn = document.getElementById('confirmModalCancel');
+
+                const cleanup = (result) => {
+                    document.getElementById('confirmModal').classList.remove('active');
+                    okBtn.removeEventListener('click', onOk);
+                    cancelBtn.removeEventListener('click', onCancel);
+                    resolve(result);
+                };
+                const onOk = () => cleanup(true);
+                const onCancel = () => cleanup(false);
+
+                okBtn.addEventListener('click', onOk);
+                cancelBtn.addEventListener('click', onCancel);
+            });
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+
+        // UI Management
+        let currentCaseId = null;
+        let currentView = 'dashboard';
+
+        function renderCaseList(cases, filter = '') {
+            const caseList = document.getElementById('caseList');
+            caseList.innerHTML = '';
+
+            const filtered = cases.filter(c =>
+                c.name.toLowerCase().includes(filter.toLowerCase()) ||
+                c.matterId.toLowerCase().includes(filter.toLowerCase())
+            );
+
+            if (filtered.length === 0) {
+                caseList.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary);">No cases found</div>';
+                return;
+            }
+
+            filtered.forEach(caseItem => {
+                const el = document.createElement('div');
+                el.className = `case-item ${currentCaseId === caseItem.id ? 'active' : ''}`;
+                el.innerHTML = `
+                    <div class="case-item-name">${caseItem.name}</div>
+                    <div class="case-item-meta">${caseItem.matterId || 'No ID'}</div>
+                    <div class="case-item-meta" style="margin-top: 4px;">
+                        <span class="status-badge ${getStatusClass(caseItem.status)}">${caseItem.status}</span>
+                    </div>
+                `;
+                el.addEventListener('click', () => viewCase(caseItem.id));
+                caseList.appendChild(el);
+            });
+        }
+
+        let dashboardStatusFilter = null;
+
+        function renderDashboard(cases) {
+            const container = document.getElementById('dashboardView');
+
+            if (cases.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <div class="empty-state-title">No cases yet</div>
+                        <p>Create a new case to get started</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const statusCounts = {
+                active: cases.filter(c => c.status === 'active').length,
+                pending: cases.filter(c => c.status === 'pending').length,
+                overdue: cases.filter(c => c.status === 'overdue').length,
+                resolved: cases.filter(c => c.status === 'resolved').length
+            };
+            const totalTasks = cases.reduce((sum, c) => sum + (c.tasks ? c.tasks.length : 0), 0);
+            const completedTasks = cases.reduce((sum, c) => sum + (c.tasks ? c.tasks.filter(t => t.completed).length : 0), 0);
+            const totalDocuments = cases.reduce((sum, c) => sum + (c.documents ? c.documents.length : 0), 0);
+
+            const displayedCases = dashboardStatusFilter
+                ? cases.filter(c => c.status === dashboardStatusFilter)
+                : cases;
+
+            const filterClass = (status) => `stat-card filterable${dashboardStatusFilter === status ? ' active-filter' : ''}`;
+
+            let html = `
+                <div style="margin-bottom: 20px;">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number">${cases.length}</div>
+                            <div class="stat-label">Total Cases</div>
+                        </div>
+                        <div class="${filterClass('active')}" style="background: rgba(39, 174, 96, 0.15); border-color: #27AE60;" onclick="setDashboardStatusFilter('active')">
+                            <div class="stat-number" style="color: #27AE60;">${statusCounts.active}</div>
+                            <div class="stat-label">Active</div>
+                        </div>
+                        <div class="${filterClass('pending')}" style="background: rgba(230, 126, 34, 0.15); border-color: #E67E22;" onclick="setDashboardStatusFilter('pending')">
+                            <div class="stat-number" style="color: #E67E22;">${statusCounts.pending}</div>
+                            <div class="stat-label">Pending</div>
+                        </div>
+                        <div class="${filterClass('overdue')}" style="background: rgba(192, 57, 43, 0.15); border-color: #C0392B;" onclick="setDashboardStatusFilter('overdue')">
+                            <div class="stat-number" style="color: #C0392B;">${statusCounts.overdue}</div>
+                            <div class="stat-label">Overdue</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">${totalDocuments}</div>
+                            <div class="stat-label">Documents</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">${completedTasks} / ${totalTasks}</div>
+                            <div class="stat-label">To-Dos Done</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            if (dashboardStatusFilter) {
+                html += `
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+                        <span style="font-size: 13px; color: var(--text-secondary);">
+                            Showing ${displayedCases.length} ${dashboardStatusFilter} case${displayedCases.length === 1 ? '' : 's'}
+                        </span>
+                        <button class="btn-secondary" style="padding: 4px 12px; font-size: 12px;" onclick="setDashboardStatusFilter(null)">Clear filter</button>
+                    </div>
+                `;
+            }
+
+            if (displayedCases.length === 0) {
+                html += `
+                    <div class="empty-state">
+                        <div class="empty-state-title">No ${dashboardStatusFilter} cases</div>
+                    </div>
+                `;
+                container.innerHTML = html;
+                return;
+            }
+
+            html += `<div class="dashboard-grid">`;
+            displayedCases.forEach(caseItem => {
+                html += `
+                    <div class="dashboard-card" onclick="viewCase('${caseItem.id}')">
+                        <div class="dashboard-card-header">
+                            <div class="dashboard-card-title">${caseItem.name}</div>
+                            <span class="status-badge ${getStatusClass(caseItem.status)}">${caseItem.status}</span>
+                        </div>
+                        <div class="case-item-meta" style="margin-bottom: 12px;">Matter: ${caseItem.matterId || 'N/A'}</div>
+                        <div class="next-action-section">
+                            <div class="next-action-label">Next Action</div>
+                            <div class="next-action-text">${caseItem.nextAction || 'Not set'}</div>
+                        </div>
+                        ${caseItem.client ? `<div style="margin-top: 12px; font-size: 13px; color: var(--text-secondary);">Client: ${caseItem.client}</div>` : ''}
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function setDashboardStatusFilter(status) {
+            dashboardStatusFilter = (dashboardStatusFilter === status) ? null : status;
+            renderDashboard(getData().cases);
+        }
+
+        function viewCase(caseId) {
+            currentCaseId = caseId;
+            const data = getData();
+            const caseItem = data.cases.find(c => c.id === caseId);
+
+            if (!caseItem) return;
+
+            renderCaseList(data.cases);
+            showCaseDetail(caseItem);
+        }
+
+        function showCaseDetail(caseItem) {
+            document.getElementById('dashboardView').style.display = 'none';
+            document.getElementById('caseDetailView').style.display = 'block';
+
+            document.getElementById('caseTitle').textContent = caseItem.name;
+            document.getElementById('caseNumber').textContent = `Matter: ${caseItem.matterId || 'Not assigned'}`;
+            document.getElementById('caseStatus').innerHTML = `<span class="status-badge ${getStatusClass(caseItem.status)}">${caseItem.status}</span>`;
+
+            const infoGrid = document.getElementById('caseInfoGrid');
+            infoGrid.innerHTML = `
+                <div class="info-item">
+                    <div class="info-label">Client</div>
+                    <div class="info-value">${caseItem.client || 'Not assigned'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Opposing Party</div>
+                    <div class="info-value">${caseItem.opposingParty || 'Not assigned'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Next Action</div>
+                    <div class="info-value" style="color: var(--accent); font-weight: 600;">${caseItem.nextAction || 'Not set'}</div>
+                </div>
+            `;
+
+            document.getElementById('overviewContent').innerHTML = `
+                <div style="padding: 16px; background: var(--accent-light); border-radius: var(--radius-md); margin-bottom: 20px;">
+                    <div style="font-size: 12px; color: var(--accent); text-transform: uppercase; font-weight: 600; margin-bottom: 8px;">Next Action</div>
+                    <div style="font-size: 15px; color: var(--text-primary); font-weight: 500;">${caseItem.nextAction || 'No next action defined'}</div>
+                </div>
+                <div id="caseSummaryBlock"></div>
+            `;
+
+            renderCaseSummaryBlock(caseItem, false);
+            renderTimeline(caseItem);
+            renderDocuments(caseItem);
+            renderTasks(caseItem);
+            renderNotes(caseItem);
+            setupDocumentDropZone();
+        }
+
+        function renderTimeline(caseItem) {
+            const container = document.getElementById('timelineContent');
+            if (!caseItem.timeline || caseItem.timeline.length === 0) {
+                container.innerHTML = '<div style="color: var(--text-secondary); padding: 20px;">No timeline entries yet</div>';
+                return;
+            }
+
+            const sorted = caseItem.timeline
+                .map((entry, idx) => ({ ...entry, _idx: idx }))
+                .sort((a, b) => new Date(b.date) - new Date(a.date));
+            container.innerHTML = sorted.map(entry => `
+                <div class="timeline-item">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                            <div style="flex: 1; min-width: 0;">
+                                <div class="timeline-date">${formatDate(entry.date)}</div>
+                                <div class="timeline-title">${entry.title}${entry.type ? ` <span style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--accent); background: var(--accent-light); border-radius: 4px; padding: 2px 7px; margin-left: 6px; vertical-align: middle;">${entry.type}</span>` : ''}</div>
+                            </div>
+                            <div class="item-actions">
+                                <button class="icon-btn" onclick="editTimelineEntry(${entry._idx})" title="Edit">✎ Edit</button>
+                                <button class="icon-btn danger" onclick="deleteTimelineEntry(${entry._idx})" title="Delete">🗑</button>
+                            </div>
+                        </div>
+                        ${formatDescriptionHtml(entry.description)}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        let editingTimelineIdx = null;
+
+        function editTimelineEntry(idx) {
+            const data = getData();
+            const caseItem = data.cases.find(c => c.id === currentCaseId);
+            if (!caseItem) return;
+            const entry = caseItem.timeline[idx];
+            if (!entry) return;
+            editingTimelineIdx = idx;
+            document.getElementById('timelineDate').value = entry.date || '';
+            document.getElementById('timelineTitle').value = entry.title || '';
+            document.getElementById('timelineType').value = entry.type || 'Correspondence';
+            document.getElementById('timelineDescription').value = entry.description || '';
+            document.querySelector('#addTimelineModal .modal-title').textContent = 'Edit Timeline Entry';
+            document.getElementById('addTimelineModal').classList.add('active');
+        }
+
+        async function deleteTimelineEntry(idx) {
+            const proceed = await showConfirm('Delete this timeline entry? This can\'t be undone.', 'Delete entry?');
+            if (!proceed) return;
+            const data = getData();
+            const caseItem = data.cases.find(c => c.id === currentCaseId);
+            if (!caseItem) return;
+            caseItem.timeline.splice(idx, 1);
+            saveData(data);
+            renderTimeline(caseItem);
+            showToast('Timeline entry deleted.', 'success');
+        }
+
+        // Abbreviations / acronyms whose trailing period is NOT a sentence
+        // boundary — without this, "...incl. GCT." or "(excl. GCT)" gets
+        // sliced apart mid-thought, leaving orphaned fragments like "GCT."
+        const NON_SENTENCE_ABBREV = new Set([
+            'mr', 'mrs', 'ms', 'dr', 'esq', 'inc', 'ltd', 'llc', 'corp', 'co',
+            'vs', 'v', 'no', 'excl', 'incl', 'etc', 'approx', 'est', 'gct',
+            'jan', 'feb', 'mar', 'apr', 'jun', 'jul', 'aug', 'sep', 'sept',
+            'oct', 'nov', 'dec', 'st', 'ave', 'blvd', 'para', 'para.', 'att', 'attn'
+        ]);
+
+        // Splits a dense paragraph into scannable points WITHOUT slicing
+        // through numbers, dollar amounts, or abbreviations. Only treats a
+        // period/!/? as a real break when: it's followed by whitespace + a
+        // capital letter (or opening quote/paren), the word right before it
+        // isn't a known abbreviation, and that word isn't an all-caps
+        // acronym (so "GCT." doesn't get read as end-of-sentence either).
+        function splitIntoPoints(text) {
+            const boundary = /[.!?]+(?=\s+[A-Z"'(])/g;
+            const points = [];
+            let start = 0;
+            let match;
+            while ((match = boundary.exec(text)) !== null) {
+                const cutEnd = match.index + match[0].length;
+                const beforePunct = text.slice(0, match.index);
+                const wordMatch = beforePunct.match(/([A-Za-z]+)$/);
+                const word = wordMatch ? wordMatch[1].toLowerCase() : '';
+                const isAllCapsAcronym = wordMatch && wordMatch[1].length <= 5 && wordMatch[1] === wordMatch[1].toUpperCase();
+                if (NON_SENTENCE_ABBREV.has(word) || isAllCapsAcronym) continue;
+                points.push(text.slice(start, cutEnd).trim());
+                start = cutEnd;
+            }
+            const rest = text.slice(start).trim();
+            if (rest) points.push(rest);
+            return points.length ? points : [text];
+        }
+
+        // Renders a timeline entry's description as short scannable bullets
+        // instead of one dense paragraph — splits on real line breaks first,
+        // and falls back to sentence-safe splitting for a single dense block.
+        // Never adds content, just breaks up what's already there.
+        function formatDescriptionHtml(desc) {
+            if (!desc) return '';
+            let lines = desc.split(/\n+/).map(l => l.trim()).filter(Boolean);
+            if (lines.length === 1) {
+                const points = splitIntoPoints(lines[0]);
+                if (points.length > 1) lines = points;
+            }
+            if (lines.length <= 1) {
+                return `<div class="timeline-description">${escapeHtmlAttr(lines[0] || desc)}</div>`;
+            }
+            return `<ul class="timeline-description-list">${lines.map(l => `<li>${escapeHtmlAttr(l)}</li>`).join('')}</ul>`;
+        }
+
+        // Case Summary block: reads as plain text by default (like Next
+        // Action), and only turns into an editable textarea when you click
+        // Edit — so it never looks mid-edit just from opening the case.
+        function renderCaseSummaryBlock(caseItem, editing) {
+            const block = document.getElementById('caseSummaryBlock');
+            if (!block) return;
+
+            if (editing) {
+                block.innerHTML = `
+                    <div class="form-group">
+                        <label class="form-label">Case Summary</label>
+                        <textarea id="caseSummaryContent" class="form-textarea" style="min-height: 90px;" placeholder="A couple sentences to orient yourself on this case...">${escapeHtmlAttr(caseItem.summary || '')}</textarea>
+                        <div style="display: flex; gap: 10px; margin-top: 10px;">
+                            <button class="add-btn" id="saveSummaryBtn" style="margin-top: 0;">Save Summary</button>
+                            <button type="button" class="btn-secondary" id="cancelSummaryBtn">Cancel</button>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('caseSummaryContent').focus();
+
+                document.getElementById('saveSummaryBtn').addEventListener('click', () => {
+                    const d = getData();
+                    const c = d.cases.find(c => c.id === currentCaseId);
+                    if (c) {
+                        c.summary = document.getElementById('caseSummaryContent').value;
+                        saveData(d);
+                        showToast('✓ Summary saved.', 'success');
+                        renderCaseSummaryBlock(c, false);
+                    }
+                });
+
+                document.getElementById('cancelSummaryBtn').addEventListener('click', () => {
+                    renderCaseSummaryBlock(caseItem, false);
+                });
+            } else {
+                const hasSummary = caseItem.summary && caseItem.summary.trim();
+                block.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <label class="form-label" style="margin-bottom: 0;">Case Summary</label>
+                        <button class="icon-btn" id="editSummaryBtn" title="Edit">✎ Edit</button>
+                    </div>
+                    <div style="font-size: 13.5px; color: ${hasSummary ? 'var(--text-primary)' : 'var(--text-secondary)'}; ${hasSummary ? '' : 'font-style: italic; line-height: 1.6;'}">
+                        ${hasSummary ? formatDescriptionHtml(caseItem.summary) : 'No summary yet — click Edit to add one.'}
+                    </div>
+                `;
+                document.getElementById('editSummaryBtn').addEventListener('click', () => {
+                    renderCaseSummaryBlock(caseItem, true);
+                });
+            }
+        }
+
+        // Consolidated Timeline view: every case's events, grouped case-by-case
+        // (not one big date-sorted list across all cases), with a dropdown to
+        // jump straight to one case's timeline. Within each case, entries are
+        // sorted newest-first, same as the per-case Timeline tab.
+        function renderTimelineView(cases) {
+            const container = document.getElementById('timelineView');
+            const casesWithData = [...cases].sort((a, b) => a.name.localeCompare(b.name));
+
+            const filterOptions = casesWithData.map(c =>
+                `<option value="${c.id}">${escapeHtmlAttr(c.name)}</option>`
+            ).join('');
+
+            const selected = container.dataset.selectedCase || 'all';
+
+            container.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; gap: 16px; flex-wrap: wrap;">
+                    <h2 style="font-family: var(--font-display); font-size: 24px; font-weight: 700;">Timeline</h2>
+                    <select class="form-select" id="timelineViewFilter" style="max-width: 280px;">
+                        <option value="all">All cases</option>
+                        ${filterOptions}
+                    </select>
+                </div>
+                <div id="timelineViewContent"></div>
+            `;
+
+            const filterEl = document.getElementById('timelineViewFilter');
+            filterEl.value = selected;
+            filterEl.addEventListener('change', () => {
+                container.dataset.selectedCase = filterEl.value;
+                renderTimelineViewContent(casesWithData, filterEl.value);
+            });
+
+            renderTimelineViewContent(casesWithData, selected);
+        }
+
+        function renderTimelineViewContent(casesWithData, selectedId) {
+            const content = document.getElementById('timelineViewContent');
+            const casesToShow = selectedId === 'all' ? casesWithData : casesWithData.filter(c => c.id === selectedId);
+
+            if (casesToShow.length === 0) {
+                content.innerHTML = '<div style="color: var(--text-secondary); padding: 20px;">No cases yet</div>';
+                return;
+            }
+
+            content.innerHTML = casesToShow.map(caseItem => {
+                const entries = [...(caseItem.timeline || [])].sort((a, b) => new Date(b.date) - new Date(a.date));
+                const entriesHtml = entries.length > 0 ? entries.map(entry => `
+                    <div class="timeline-item">
+                        <div class="timeline-marker"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-date">${formatDate(entry.date)}</div>
+                            <div class="timeline-title">${entry.title}${entry.type ? ` <span style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--accent); background: var(--accent-light); border-radius: 4px; padding: 2px 7px; margin-left: 6px; vertical-align: middle;">${entry.type}</span>` : ''}</div>
+                            ${formatDescriptionHtml(entry.description)}
+                        </div>
+                    </div>
+                `).join('') : '<div style="color: var(--text-secondary); padding: 12px 0;">No timeline entries yet</div>';
+
+                return `
+                    <div style="margin-bottom: 36px;">
+                        <div onclick="viewCase('${caseItem.id}')" style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding-bottom: 12px; border-bottom: 1px solid var(--border); margin-bottom: 12px;">
+                            <span style="font-family: var(--font-display); font-size: 17px; font-weight: 700; color: var(--text-primary);">${caseItem.name}</span>
+                            <span class="status-badge ${getStatusClass(caseItem.status)}">${caseItem.status}</span>
+                        </div>
+                        ${entriesHtml}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function escapeHtmlAttr(str) {
+            if (str === null || str === undefined) return '';
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function renderDocuments(caseItem) {
+            const container = document.getElementById('documentsContent');
+            if (!caseItem.documents || caseItem.documents.length === 0) {
+                container.innerHTML = '<div style="color: var(--text-secondary); padding: 20px;">No documents yet</div>';
+                return;
+            }
+
+            container.innerHTML = '<div class="documents-grid">' + caseItem.documents.map((doc, idx) => `
+                <div class="document-card">
+                    <div class="document-icon">${docIcon(doc.fileName || doc.name)}</div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div class="document-name">${doc.name}</div>
+                        ${doc.fileName && doc.fileName !== doc.name ? `<div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">File: ${doc.fileName}</div>` : ''}
+                        ${doc.parsed ? `<div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 4px; white-space: pre-wrap;">${doc.parsed}</div>` : ''}
+                        ${doc.tooLargeToStore ? `<div style="font-size: 11px; color: var(--status-overdue); margin-top: 4px;">Not stored — name/date only</div>` : ''}
+                        ${doc.storageFailed ? `<div style="font-size: 11px; color: var(--status-overdue); margin-top: 4px;">Couldn't store the file on this device — name/date only</div>` : ''}
+                    </div>
+                    ${doc.date ? `<div class="document-date">${formatDate(doc.date)}</div>` : ''}
+                    <div class="item-actions">
+                        ${(doc.fileKey || doc.fileData) ? `<button class="icon-btn" onclick="previewDocument(${idx})" title="Preview">👁 View</button>` : ''}
+                        ${(doc.fileKey || doc.fileData) ? `<button class="icon-btn" onclick="downloadStoredDocument(${idx})" title="Download">⬇ Save</button>` : ''}
+                        <button class="icon-btn" onclick="editDocumentEntry(${idx})" title="Edit">✎</button>
+                        <button class="icon-btn danger" onclick="deleteDocumentEntry(${idx})" title="Delete">🗑</button>
+                    </div>
+                </div>
+            `).join('') + '</div>';
+        }
+
+        let editingDocumentIdx = null;
+
+        function editDocumentEntry(idx) {
+            const data = getData();
+            const caseItem = data.cases.find(c => c.id === currentCaseId);
+            if (!caseItem) return;
+            const doc = caseItem.documents[idx];
+            if (!doc) return;
+            editingDocumentIdx = idx;
+            document.getElementById('docName').value = doc.name || '';
+            document.getElementById('docType').value = doc.type || '';
+            document.getElementById('docDate').value = doc.date || '';
+            const hint = document.getElementById('docFileNameHint');
+            if (doc.fileName) {
+                hint.textContent = `Attached file: ${doc.fileName} — the label above is just how it's displayed; download still uses the real file.`;
+                hint.style.display = 'block';
+            } else {
+                hint.style.display = 'none';
+            }
+            document.querySelector('#addDocumentModal .modal-title').textContent = 'Edit Document';
+            document.getElementById('addDocumentModal').classList.add('active');
+        }
+
+        async function deleteDocumentEntry(idx) {
+            const proceed = await showConfirm('Delete this document? This can\'t be undone.', 'Delete document?');
+            if (!proceed) return;
+            const data = getData();
+            const caseItem = data.cases.find(c => c.id === currentCaseId);
+            if (!caseItem) return;
+            const doc = caseItem.documents[idx];
+            caseItem.documents.splice(idx, 1);
+            saveData(data);
+            renderDocuments(caseItem);
+            showToast('Document deleted.', 'success');
+            if (doc && doc.fileKey) {
+                idbDeleteFile(doc.fileKey).catch(err => console.error('Could not delete stored file', err));
+            }
+        }
+
+        function renderTasks(caseItem) {
+            const container = document.getElementById('tasksContent');
+            if (!caseItem.tasks || caseItem.tasks.length === 0) {
+                container.innerHTML = '<div style="color: var(--text-secondary); padding: 20px;">No tasks yet</div>';
+                return;
+            }
+
+            container.innerHTML = caseItem.tasks.map((task, idx) => `
+                <div class="task-item ${task.completed ? 'completed' : ''}">
+                    <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask('${currentCaseId}', ${idx})">
+                    <div class="task-content">
+                        <div class="task-text">${task.description}</div>
+                        ${task.due ? `<div class="task-due">Due: ${formatDate(task.due)}</div>` : ''}
+                    </div>
+                    <div class="item-actions">
+                        <button class="icon-btn" onclick="editTaskEntry(${idx})" title="Edit">✎</button>
+                        <button class="icon-btn danger" onclick="deleteTaskEntry(${idx})" title="Delete">🗑</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        let editingTaskIdx = null;
+
+        function editTaskEntry(idx) {
+            const data = getData();
+            const caseItem = data.cases.find(c => c.id === currentCaseId);
+            if (!caseItem) return;
+            const task = caseItem.tasks[idx];
+            if (!task) return;
+            editingTaskIdx = idx;
+            document.getElementById('taskDescription').value = task.description || '';
+            document.getElementById('taskDue').value = task.due || '';
+            document.querySelector('#addTaskModal .modal-title').textContent = 'Edit To-Do';
+            document.getElementById('addTaskModal').classList.add('active');
+        }
+
+        async function deleteTaskEntry(idx) {
+            const proceed = await showConfirm('Delete this task? This can\'t be undone.', 'Delete task?');
+            if (!proceed) return;
+            const data = getData();
+            const caseItem = data.cases.find(c => c.id === currentCaseId);
+            if (!caseItem) return;
+            caseItem.tasks.splice(idx, 1);
+            saveData(data);
+            renderTasks(caseItem);
+            showToast('To-do deleted.', 'success');
+        }
+
+        function renderNotes(caseItem) {
+            document.getElementById('notesContent').value = caseItem.notes || '';
+            const status = document.getElementById('notesSaveStatus');
+            if (status) status.textContent = '';
+        }
+
+        function setupDocumentDropZone() {
+            const dropZone = document.getElementById('dropZone');
+            if (!dropZone || dropZone.dataset.initialized) return;
+            dropZone.dataset.initialized = 'true';
+
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.style.background = 'var(--accent)';
+                dropZone.style.color = 'white';
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.style.background = 'var(--accent-light)';
+                dropZone.style.color = 'inherit';
+            });
+
+            dropZone.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                dropZone.style.background = 'var(--accent-light)';
+                const files = Array.from(e.dataTransfer.files);
+                // Sequential, not Promise.all — each upload reads-then-saves
+                // the whole dataset, so running them concurrently would let
+                // one drop silently overwrite another's save.
+                for (const file of files) {
+                    await handleDocumentUpload(file);
+                }
+            });
+
+            // Click-to-browse as an alternative to drag-and-drop, not a
+            // replacement for it — via a hidden <input type="file">, the
+            // standard technique. If this particular sandboxed view ever
+            // declines to open the native picker, drag-and-drop above still
+            // works exactly as before either way.
+            const fileInput = document.getElementById('documentFileInput');
+            dropZone.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', async () => {
+                const files = Array.from(fileInput.files);
+                for (const file of files) {
+                    await handleDocumentUpload(file);
+                }
+                fileInput.value = '';
+            });
+        }
+
+        // --- File storage: IndexedDB, not localStorage ---
+        // localStorage has a tiny total quota (a few MB per origin) shared
+        // across ALL data, and storing files there as base64 text inflates
+        // their size ~33% on top of that — that's what was filling up and
+        // causing "Storage was full" uploads. IndexedDB is a separate,
+        // much larger per-origin store (typically hundreds of MB to GBs,
+        // browser-dependent) built for exactly this — binary blobs — with
+        // no base64 inflation needed. localStorage now only holds case
+        // metadata (tiny); every document's actual file bytes live in
+        // IndexedDB, referenced by a doc.fileKey.
+        const FILE_DB_NAME = 'caseTrackerFiles';
+        const FILE_STORE = 'files';
+        let fileDbPromise = null;
+        function openFileDb() {
+            if (fileDbPromise) return fileDbPromise;
+            fileDbPromise = new Promise((resolve, reject) => {
+                if (typeof indexedDB === 'undefined') { reject(new Error('IndexedDB unavailable')); return; }
+                const req = indexedDB.open(FILE_DB_NAME, 1);
+                req.onupgradeneeded = () => {
+                    const db = req.result;
+                    if (!db.objectStoreNames.contains(FILE_STORE)) db.createObjectStore(FILE_STORE);
+                };
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+            return fileDbPromise;
+        }
+        async function idbPutFile(key, blob) {
+            const db = await openFileDb();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(FILE_STORE, 'readwrite');
+                tx.objectStore(FILE_STORE).put(blob, key);
+                tx.oncomplete = () => resolve(true);
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+        async function idbGetFile(key) {
+            const db = await openFileDb();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(FILE_STORE, 'readonly');
+                const req = tx.objectStore(FILE_STORE).get(key);
+                req.onsuccess = () => resolve(req.result || null);
+                req.onerror = () => reject(req.error);
+            });
+        }
+        async function idbDeleteFile(key) {
+            const db = await openFileDb();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(FILE_STORE, 'readwrite');
+                tx.objectStore(FILE_STORE).delete(key);
+                tx.oncomplete = () => resolve(true);
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+
+        // Retrieves a document's file as a Blob regardless of where it's
+        // stored — IndexedDB (fileKey, the current path) or, for documents
+        // added before this change, the legacy base64 fileData string.
+        async function getDocBlob(doc) {
+            if (doc.fileKey) {
+                try {
+                    const blob = await idbGetFile(doc.fileKey);
+                    if (blob) return blob;
+                } catch (err) {
+                    console.error('IndexedDB read failed', err);
+                }
+            }
+            if (doc.fileData) {
+                try { return dataUrlToBlob(doc.fileData); } catch (err) { console.error(err); }
+            }
+            return null;
+        }
+
+        // One-time migration: move any documents still holding the old
+        // base64 fileData (stored in localStorage, counting against its
+        // tiny quota) into IndexedDB instead, freeing that space up.
+        async function migrateLegacyFilesToIndexedDB() {
+            const data = getData();
+            if (data.fileStorageMigrated) return;
+            let changed = false;
+            for (const caseItem of (data.cases || [])) {
+                for (const doc of (caseItem.documents || [])) {
+                    if (doc.fileData && !doc.fileKey) {
+                        try {
+                            const blob = dataUrlToBlob(doc.fileData);
+                            const fileKey = `f_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+                            await idbPutFile(fileKey, blob);
+                            doc.fileKey = fileKey;
+                            delete doc.fileData;
+                            delete doc.storageFailed;
+                            changed = true;
+                        } catch (err) {
+                            console.error('Could not migrate a stored document to IndexedDB', err);
+                        }
+                    }
+                }
+            }
+            // Older backups (from before the file-per-document format above)
+            // store files separately in one documentFiles map, keyed by
+            // fileKey, rather than inline on each document. Restore those
+            // into this browser's IndexedDB too, then drop the map — it
+            // isn't kept around (and re-synced through Supabase) afterward.
+            if (data.documentFiles && typeof data.documentFiles === 'object') {
+                for (const [fileKey, dataUrl] of Object.entries(data.documentFiles)) {
+                    try {
+                        await idbPutFile(fileKey, dataUrlToBlob(dataUrl));
+                        changed = true;
+                    } catch (err) {
+                        console.error('Could not restore a stored document file', err);
+                    }
+                }
+                delete data.documentFiles;
+            }
+            data.fileStorageMigrated = true;
+            saveData(data);
+            if (changed) console.log('Migrated stored documents from local storage to IndexedDB.');
+        }
+
+        function readFileAsDataURL(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(reader.error);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function readFileAsText(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(reader.error);
+                reader.readAsText(file);
+            });
+        }
+
+        // .docx is a ZIP archive of XML — pulls word/document.xml out by hand
+        // (central directory + local header) and inflates it with the
+        // browser's built-in DecompressionStream. No external library needed
+        // (and none could be loaded here anyway).
+        async function extractDocxText(arrayBuffer) {
+            try {
+                if (typeof DecompressionStream === 'undefined') return null;
+                const bytes = new Uint8Array(arrayBuffer);
+                const dv = new DataView(arrayBuffer);
+
+                let eocdOffset = -1;
+                const scanStart = Math.max(0, bytes.length - 22 - 65536);
+                for (let i = bytes.length - 22; i >= scanStart; i--) {
+                    if (dv.getUint32(i, true) === 0x06054b50) { eocdOffset = i; break; }
+                }
+                if (eocdOffset === -1) return null;
+
+                const centralDirOffset = dv.getUint32(eocdOffset + 16, true);
+                const centralDirCount = dv.getUint16(eocdOffset + 10, true);
+
+                let offset = centralDirOffset;
+                let localHeaderOffset = null, compSize = null, method = null;
+                for (let i = 0; i < centralDirCount; i++) {
+                    if (dv.getUint32(offset, true) !== 0x02014b50) break;
+                    const m = dv.getUint16(offset + 10, true);
+                    const cSize = dv.getUint32(offset + 20, true);
+                    const nameLen = dv.getUint16(offset + 28, true);
+                    const extraLen = dv.getUint16(offset + 30, true);
+                    const commentLen = dv.getUint16(offset + 32, true);
+                    const lho = dv.getUint32(offset + 42, true);
+                    const name = new TextDecoder().decode(bytes.slice(offset + 46, offset + 46 + nameLen));
+                    if (name === 'word/document.xml') {
+                        localHeaderOffset = lho; compSize = cSize; method = m;
+                    }
+                    offset += 46 + nameLen + extraLen + commentLen;
+                }
+                if (localHeaderOffset === null) return null;
+
+                const lh = localHeaderOffset;
+                if (dv.getUint32(lh, true) !== 0x04034b50) return null;
+                const lNameLen = dv.getUint16(lh + 26, true);
+                const lExtraLen = dv.getUint16(lh + 28, true);
+                const dataStart = lh + 30 + lNameLen + lExtraLen;
+                const compressedData = bytes.slice(dataStart, dataStart + compSize);
+
+                let xmlBytes;
+                if (method === 0) {
+                    xmlBytes = compressedData;
+                } else if (method === 8) {
+                    const stream = new Blob([compressedData]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+                    xmlBytes = new Uint8Array(await new Response(stream).arrayBuffer());
+                } else {
+                    return null;
+                }
+
+                const xml = new TextDecoder('utf-8').decode(xmlBytes);
+                // Whitelist approach: only pull text out of <w:t> runs (plus
+                // tab/line-break markers), rather than stripping all tags and
+                // keeping "whatever's left" — that blacklist approach let
+                // stray, non-text XML content (style/property attribute
+                // values etc.) leak into the output as garbage fragments.
+                const paragraphs = xml.split(/<\/w:p>/);
+                const lines = paragraphs.map(para => {
+                    const tokenRegex = /<w:t[^>]*>([\s\S]*?)<\/w:t>|<w:tab\s*\/>|<w:br\s*\/>/g;
+                    let line = '';
+                    let m;
+                    while ((m = tokenRegex.exec(para)) !== null) {
+                        if (m[0].indexOf('<w:tab') === 0) line += '\t';
+                        else if (m[0].indexOf('<w:br') === 0) line += '\n';
+                        else line += m[1];
+                    }
+                    return line;
+                });
+                let text = lines.join('\n')
+                    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+                    .replace(/&quot;/g, '"').replace(/&apos;/g, "'");
+                return text.replace(/\n{3,}/g, '\n\n').trim();
+            } catch (err) {
+                console.error('docx extraction failed', err);
+                return null;
+            }
+        }
+
+        function docIcon(filename) {
+            const ext = (filename.split('.').pop() || '').toLowerCase();
+            if (ext === 'pdf') return '📕';
+            if (ext === 'doc' || ext === 'docx') return '📝';
+            if (ext === 'xls' || ext === 'xlsx' || ext === 'csv') return '📊';
+            return '📄';
+        }
+
+        // Converts a data: URL back to a Blob WITHOUT fetch() — the sandbox's
+        // network policy blocks fetch() against data: URLs ("Failed to
+        // fetch"), so this decodes the base64 by hand instead, which is pure
+        // JS and never touches the network.
+        function dataUrlToBlob(dataUrl) {
+            const commaIdx = dataUrl.indexOf(',');
+            const header = dataUrl.slice(0, commaIdx);
+            const base64 = dataUrl.slice(commaIdx + 1);
+            const mimeMatch = header.match(/data:(.*?);base64/);
+            const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+            const binary = atob(base64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            return new Blob([bytes], { type: mime });
+        }
+
+        // The `claude` global (and its `downloads` capability) only exists
+        // when this page is running inside claude.ai's Artifact hosting.
+        // Opened as a plain local .html file, `claude` isn't defined at all
+        // — referencing it directly throws before the "is downloads
+        // available" check ever runs, so Save/Export would silently fail.
+        // This checks for that first so callers correctly fall back to the
+        // manual browser-download path instead.
+        async function getDownloadsCapability() {
+            if (typeof claude === 'undefined' || !claude || typeof claude.use !== 'function') return null;
+            try {
+                return await claude.use('downloads');
+            } catch (err) {
+                console.error('claude.use(downloads) failed', err);
+                return null;
+            }
+        }
+
+        async function downloadStoredDocument(idx) {
+            const data = getData();
+            const caseItem = data.cases.find(c => c.id === currentCaseId);
+            if (!caseItem) return;
+            const doc = caseItem.documents[idx];
+            if (!doc || (!doc.fileKey && !doc.fileData)) {
+                showToast('No stored file for this document — it was added by name only.', 'warning');
+                return;
+            }
+            const blob = await getDocBlob(doc);
+            if (!blob) {
+                showToast(`Couldn't retrieve the stored file for "${doc.name}".`, 'warning');
+                return;
+            }
+            try {
+                const downloads = await getDownloadsCapability();
+                if (!downloads) {
+                    showToast('Saving files isn\'t available in this view.', 'warning');
+                    return;
+                }
+                const saveName = doc.fileName || doc.name;
+                await downloads.save({ filename: saveName, data: blob });
+                showToast(`✓ Saved ${saveName}.`, 'success');
+            } catch (err) {
+                const code = err && err.code;
+                if (code === 'declined') return;
+                if (code === 'rejected_extension' || code === 'extension_not_enabled') {
+                    const displayName = doc.fileName || doc.name;
+                    const ext = (displayName.split('.').pop() || '').toLowerCase();
+                    if (ext === 'zip' || ext === 'rar' || ext === '7z') {
+                        showToast(`"${displayName}" is still stored here, but archive files (.${ext}) can't be downloaded back out — this only supports individual files (PDF, Word, images, text, etc). If you need it again, unzip it on your computer and add the documents inside one by one instead of the archive.`, 'warning');
+                    } else {
+                        showToast(`"${displayName}" is still stored here, but that file type (.${ext}) can't be downloaded from this view — try PDF, Word, an image, or a text file instead.`, 'warning');
+                    }
+                } else if (code === 'too_large') {
+                    showToast('That file is too large to save (over 16MB).', 'warning');
+                } else {
+                    showToast(`Couldn't save ${doc.name}${err && err.message ? ': ' + err.message : '.'}`, 'warning');
+                }
+            }
+        }
+
+        // Tracks the object URL backing the current PDF preview (if any) so
+        // it can be revoked when the modal closes or a new preview opens.
+        let currentPreviewObjectUrl = null;
+        function revokeCurrentPreviewUrl() {
+            if (currentPreviewObjectUrl) {
+                URL.revokeObjectURL(currentPreviewObjectUrl);
+                currentPreviewObjectUrl = null;
+            }
+        }
+
+        // Renders a PDF's pages to <canvas> elements using the vendored
+        // PDF.js library (inlined near the top of <body>) instead of an
+        // <iframe>/native PDF viewer — the browser blocks the native viewer
+        // from running inside this sandboxed page, but canvas rendering is
+        // just JS drawing pixels and isn't subject to that restriction.
+        async function renderPdfPreview(blob, container) {
+            if (!window.pdfjsLib) {
+                container.innerHTML = '<div style="padding: 20px; color: var(--text-secondary);">PDF preview isn\'t available — use Save below to download it and open it in the right app.</div>';
+                return;
+            }
+            container.innerHTML = '<div style="padding: 20px; color: var(--text-secondary);">Rendering PDF…</div>';
+            const arrayBuf = await blob.arrayBuffer();
+            const loadingTask = pdfjsLib.getDocument({ data: arrayBuf, isEvalSupported: false });
+            const pdf = await loadingTask.promise;
+
+            const wrap = document.createElement('div');
+            wrap.style.cssText = 'display: flex; flex-direction: column; gap: 12px; align-items: center;';
+            const targetWidth = container.clientWidth > 40 ? container.clientWidth - 8 : 640;
+
+            const MAX_PAGES = 40;
+            const pageCount = Math.min(pdf.numPages, MAX_PAGES);
+            for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
+                const page = await pdf.getPage(pageNum);
+                const baseViewport = page.getViewport({ scale: 1 });
+                const scale = targetWidth / baseViewport.width;
+                const viewport = page.getViewport({ scale: scale > 0.1 ? scale : 1 });
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.ceil(viewport.width);
+                canvas.height = Math.ceil(viewport.height);
+                canvas.style.cssText = 'max-width: 100%; border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: 0 1px 3px rgba(0,0,0,0.15);';
+                const ctx = canvas.getContext('2d');
+                await page.render({ canvasContext: ctx, viewport }).promise;
+                wrap.appendChild(canvas);
+            }
+            if (pdf.numPages > MAX_PAGES) {
+                const note = document.createElement('div');
+                note.style.cssText = 'font-size: 11.5px; color: var(--text-secondary);';
+                note.textContent = `Showing the first ${MAX_PAGES} of ${pdf.numPages} pages — use Save below for the full document.`;
+                wrap.appendChild(note);
+            }
+            container.innerHTML = '';
+            container.appendChild(wrap);
+        }
+
+        // Shows a stored document inline where it's reliably supported
+        // (images, plain text, .docx via the same extractor used on upload)
+        // and falls back to a "use Save instead" message elsewhere — PDFs
+        // get a best-effort inline attempt with that same fallback note,
+        // since whether an embedded PDF renders can vary by browser.
+        async function previewDocument(idx) {
+            const data = getData();
+            const caseItem = data.cases.find(c => c.id === currentCaseId);
+            if (!caseItem) return;
+            const doc = caseItem.documents[idx];
+            if (!doc) return;
+            if (!doc.fileKey && !doc.fileData) {
+                showToast('No stored file for this document — it was added by name only.', 'warning');
+                return;
+            }
+
+            revokeCurrentPreviewUrl();
+            document.getElementById('previewModalTitle').textContent = doc.name;
+            const body = document.getElementById('previewModalBody');
+            body.innerHTML = '<div style="padding: 20px; color: var(--text-secondary);">Loading preview…</div>';
+            document.getElementById('previewModal').classList.add('active');
+            document.getElementById('previewModalSave').onclick = () => downloadStoredDocument(idx);
+
+            const filenameForType = doc.fileName || doc.name;
+            const ext = (filenameForType.split('.').pop() || '').toLowerCase();
+            const fallbackMsg = (label) => `<div style="padding: 20px; color: var(--text-secondary);">${label} — use Save below to download it and open it in the right app.</div>`;
+
+            try {
+                const blob = await getDocBlob(doc);
+                if (!blob) {
+                    body.innerHTML = fallbackMsg("Couldn't retrieve the stored file");
+                    return;
+                }
+                const mime = blob.type || '';
+                if (mime.startsWith('image/') || ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) {
+                    currentPreviewObjectUrl = URL.createObjectURL(blob);
+                    body.innerHTML = `<img src="${currentPreviewObjectUrl}" style="max-width: 100%; max-height: 65vh; display: block; margin: 0 auto; border-radius: var(--radius-sm);">`;
+                } else if (ext === 'txt' || ext === 'csv' || mime === 'text/plain') {
+                    const text = await blob.text();
+                    body.innerHTML = `<pre style="white-space: pre-wrap; font-family: var(--font-body); font-size: 13px; line-height: 1.6; color: var(--text-primary); margin: 0;">${escapeHtmlAttr(text)}</pre>`;
+                } else if (ext === 'docx') {
+                    const buf = await blob.arrayBuffer();
+                    const text = await extractDocxText(buf);
+                    body.innerHTML = text
+                        ? `<pre style="white-space: pre-wrap; font-family: var(--font-body); font-size: 13px; line-height: 1.6; color: var(--text-primary); margin: 0;">${escapeHtmlAttr(text)}</pre>`
+                        : fallbackMsg("Couldn't read this .docx for preview");
+                } else if (ext === 'pdf' || mime === 'application/pdf') {
+                    // The browser's native PDF viewer can't run inside this
+                    // sandboxed page (that's what was blocking preview
+                    // before), so pages are rendered to <canvas> with a
+                    // bundled copy of PDF.js instead — plain JS drawing,
+                    // not subject to that restriction.
+                    try {
+                        await renderPdfPreview(blob, body);
+                    } catch (pdfErr) {
+                        console.error('PDF render failed', pdfErr);
+                        body.innerHTML = fallbackMsg("Couldn't render this PDF for preview");
+                    }
+                } else {
+                    body.innerHTML = fallbackMsg(`Preview isn't available for this file type (.${ext || 'unknown'})`);
+                }
+            } catch (err) {
+                console.error('Preview failed', err);
+                body.innerHTML = fallbackMsg("Couldn't generate a preview");
+            }
+        }
+
+        document.getElementById('previewModalClose').addEventListener('click', () => {
+            document.getElementById('previewModal').classList.remove('active');
+            document.getElementById('previewModalBody').innerHTML = '';
+            revokeCurrentPreviewUrl();
+        });
+
+        async function handleDocumentUpload(file) {
+            const nameLower = file.name.toLowerCase();
+            const isPlainText = nameLower.endsWith('.txt') || nameLower.endsWith('.csv') || file.type === 'text/plain';
+            const isDocx = nameLower.endsWith('.docx') || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+            let extractedText = '';
+            try {
+                if (isPlainText) {
+                    extractedText = await readFileAsText(file);
+                } else if (isDocx) {
+                    const buf = await file.arrayBuffer();
+                    extractedText = (await extractDocxText(buf)) || '';
+                }
+            } catch (err) {
+                console.error('Text extraction failed', err);
+            }
+
+            let parsedInfo = '';
+            if (extractedText) {
+                const datePattern = /(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/g;
+                const dates = extractedText.match(datePattern);
+                if (dates && dates.length > 0) parsedInfo += `Dates found: ${[...new Set(dates)].slice(0, 3).join(', ')}\n`;
+
+                const emailPattern = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/gi;
+                const emails = extractedText.match(emailPattern);
+                if (emails && emails.length > 0) parsedInfo += `Contacts: ${[...new Set(emails)].slice(0, 2).join(', ')}\n`;
+
+                const keyTerms = ['signed', 'executed', 'agreement', 'amendment', 'renewal', 'termination', 'filed', 'served', 'motion', 'order', 'hearing', 'settlement', 'indemnify', 'confidential'];
+                const foundTerms = keyTerms.filter(term => extractedText.toLowerCase().includes(term));
+                if (foundTerms.length > 0) parsedInfo += `Key terms: ${foundTerms.join(', ')}`;
+            }
+
+            const docEntry = {
+                name: file.name,
+                fileName: file.name,
+                type: file.type || 'file',
+                date: new Date().toISOString().split('T')[0],
+                parsed: parsedInfo.trim(),
+                size: file.size
+            };
+
+            // Store the file itself in IndexedDB (large per-origin quota,
+            // no base64 inflation) — not localStorage, which is tiny and
+            // is what used to fill up.
+            const fileKey = `f_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+            let stored = false;
+            try {
+                await idbPutFile(fileKey, file);
+                docEntry.fileKey = fileKey;
+                stored = true;
+            } catch (err) {
+                console.error('Could not store file in IndexedDB', err);
+            }
+
+            const data = getData();
+            const caseItem = data.cases.find(c => c.id === currentCaseId);
+            if (!caseItem) return;
+            caseItem.documents.push(docEntry);
+
+            if (!stored) docEntry.storageFailed = true;
+            const saved = saveData(data);
+
+            if (!saved) {
+                caseItem.documents.pop();
+                if (stored) idbDeleteFile(fileKey).catch(() => {});
+                showToast(`Couldn't add "${file.name}" — something went wrong saving its details. Try again.`, 'warning');
+                return;
+            }
+
+            if (!stored) {
+                showToast(`Added "${file.name}", but the file itself couldn't be stored on this device — name/date only.`, 'warning');
+            } else {
+                showToast(`✓ Added and stored: ${file.name}`, 'success');
+            }
+            renderDocuments(caseItem);
+        }
+
+        // Modal handlers
+        let editingCaseId = null;
+
+        document.getElementById('newCaseBtn').addEventListener('click', () => {
+            editingCaseId = null;
+            document.getElementById('newCaseForm').reset();
+            document.getElementById('client').value = "Stewart's Automotive Group – ";
+            document.querySelector('#newCaseModal .modal-title').textContent = 'New Case';
+            document.getElementById('newCaseModal').classList.add('active');
+        });
+
+        document.getElementById('cancelNewCase').addEventListener('click', () => {
+            editingCaseId = null;
+            document.getElementById('newCaseModal').classList.remove('active');
+        });
+
+        document.getElementById('editCaseBtn').addEventListener('click', () => {
+            const data = getData();
+            const caseItem = data.cases.find(c => c.id === currentCaseId);
+            if (!caseItem) return;
+            editingCaseId = caseItem.id;
+            document.getElementById('caseName').value = caseItem.name || '';
+            document.getElementById('matterId').value = caseItem.matterId || '';
+            document.getElementById('client').value = caseItem.client || '';
+            document.getElementById('opposingParty').value = caseItem.opposingParty || '';
+            document.getElementById('status').value = caseItem.status || '';
+            document.getElementById('nextAction').value = caseItem.nextAction || '';
+            document.getElementById('caseSummary').value = caseItem.summary || '';
+            document.querySelector('#newCaseModal .modal-title').textContent = 'Edit Case';
+            document.getElementById('newCaseModal').classList.add('active');
+        });
+
+        document.getElementById('deleteCaseBtn').addEventListener('click', async () => {
+            const data = getData();
+            const caseItem = data.cases.find(c => c.id === currentCaseId);
+            if (!caseItem) return;
+            const proceed = await showConfirm(`Delete "${caseItem.name}" and everything in it — timeline, documents, tasks, notes? This can't be undone.`, 'Delete case?');
+            if (!proceed) return;
+            data.cases = data.cases.filter(c => c.id !== currentCaseId);
+            saveData(data);
+            showToast(`✓ "${caseItem.name}" deleted.`, 'success');
+            document.getElementById('caseDetailView').style.display = 'none';
+            document.getElementById('dashboardView').style.display = 'block';
+            document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('.view-btn[data-view="dashboard"]').classList.add('active');
+            currentView = 'dashboard';
+            renderDashboard(data.cases);
+            renderCaseList(data.cases);
+        });
+
+        document.getElementById('newCaseForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const data = getData();
+            const caseFields = {
+                name: document.getElementById('caseName').value,
+                matterId: document.getElementById('matterId').value,
+                client: document.getElementById('client').value,
+                opposingParty: document.getElementById('opposingParty').value,
+                status: document.getElementById('status').value,
+                nextAction: document.getElementById('nextAction').value,
+                summary: document.getElementById('caseSummary').value
+            };
+            if (editingCaseId !== null) {
+                const caseItem = data.cases.find(c => c.id === editingCaseId);
+                if (caseItem) Object.assign(caseItem, caseFields);
+            } else {
+                data.cases.push({
+                    id: Date.now().toString(),
+                    ...caseFields,
+                    timeline: [],
+                    documents: [],
+                    tasks: [],
+                    notes: ''
+                });
+            }
+            saveData(data);
+            document.getElementById('newCaseForm').reset();
+            document.getElementById('newCaseModal').classList.remove('active');
+            const wasEditing = editingCaseId !== null;
+            editingCaseId = null;
+            document.querySelector('#newCaseModal .modal-title').textContent = 'New Case';
+            renderDashboard(data.cases);
+            renderCaseList(data.cases);
+            if (wasEditing && currentCaseId) {
+                const updated = data.cases.find(c => c.id === currentCaseId);
+                if (updated) showCaseDetail(updated);
+            }
+        });
+
+        // Timeline modal
+        document.getElementById('addTimelineBtn').addEventListener('click', () => {
+            editingTimelineIdx = null;
+            document.getElementById('timelineForm').reset();
+            document.querySelector('#addTimelineModal .modal-title').textContent = 'Add Timeline Entry';
+            document.getElementById('addTimelineModal').classList.add('active');
+        });
+
+        document.getElementById('cancelTimeline').addEventListener('click', () => {
+            editingTimelineIdx = null;
+            document.getElementById('addTimelineModal').classList.remove('active');
+        });
+
+        document.getElementById('timelineForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const data = getData();
+            const caseItem = data.cases.find(c => c.id === currentCaseId);
+            if (caseItem) {
+                const entryData = {
+                    date: document.getElementById('timelineDate').value,
+                    title: document.getElementById('timelineTitle').value,
+                    type: document.getElementById('timelineType').value,
+                    description: document.getElementById('timelineDescription').value
+                };
+                if (editingTimelineIdx !== null && caseItem.timeline[editingTimelineIdx]) {
+                    caseItem.timeline[editingTimelineIdx] = entryData;
+                } else {
+                    caseItem.timeline.push(entryData);
+                }
+                saveData(data);
+                renderTimeline(caseItem);
+                document.getElementById('timelineForm').reset();
+                document.getElementById('addTimelineModal').classList.remove('active');
+                editingTimelineIdx = null;
+                document.querySelector('#addTimelineModal .modal-title').textContent = 'Add Timeline Entry';
+            }
+        });
+
+        // Document modal
+        document.getElementById('addDocumentBtn').addEventListener('click', () => {
+            editingDocumentIdx = null;
+            document.getElementById('documentForm').reset();
+            document.getElementById('docFileNameHint').style.display = 'none';
+            document.querySelector('#addDocumentModal .modal-title').textContent = 'Add Document';
+            document.getElementById('addDocumentModal').classList.add('active');
+        });
+
+        document.getElementById('cancelDocument').addEventListener('click', () => {
+            editingDocumentIdx = null;
+            document.getElementById('addDocumentModal').classList.remove('active');
+        });
+
+        document.getElementById('documentForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const data = getData();
+            const caseItem = data.cases.find(c => c.id === currentCaseId);
+            if (caseItem) {
+                const docData = {
+                    name: document.getElementById('docName').value,
+                    type: document.getElementById('docType').value,
+                    date: document.getElementById('docDate').value
+                };
+                if (editingDocumentIdx !== null && caseItem.documents[editingDocumentIdx]) {
+                    // Editing changes the display label only — carry forward
+                    // everything about the actual stored/attached file.
+                    const existing = caseItem.documents[editingDocumentIdx];
+                    docData.parsed = existing.parsed;
+                    docData.fileName = existing.fileName;
+                    docData.fileKey = existing.fileKey;
+                    docData.fileData = existing.fileData;
+                    docData.size = existing.size;
+                    docData.tooLargeToStore = existing.tooLargeToStore;
+                    docData.storageFailed = existing.storageFailed;
+                    caseItem.documents[editingDocumentIdx] = docData;
+                } else {
+                    caseItem.documents.push(docData);
+                }
+                saveData(data);
+                renderDocuments(caseItem);
+                document.getElementById('documentForm').reset();
+                document.getElementById('addDocumentModal').classList.remove('active');
+                editingDocumentIdx = null;
+                document.querySelector('#addDocumentModal .modal-title').textContent = 'Add Document';
+            }
+        });
+
+        // Task modal
+        document.getElementById('addTaskBtn').addEventListener('click', () => {
+            editingTaskIdx = null;
+            document.getElementById('taskForm').reset();
+            document.querySelector('#addTaskModal .modal-title').textContent = 'Add To-Do';
+            document.getElementById('addTaskModal').classList.add('active');
+        });
+
+        document.getElementById('cancelTask').addEventListener('click', () => {
+            editingTaskIdx = null;
+            document.getElementById('addTaskModal').classList.remove('active');
+        });
+
+        document.getElementById('taskForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const data = getData();
+            const caseItem = data.cases.find(c => c.id === currentCaseId);
+            if (caseItem) {
+                if (editingTaskIdx !== null && caseItem.tasks[editingTaskIdx]) {
+                    caseItem.tasks[editingTaskIdx].description = document.getElementById('taskDescription').value;
+                    caseItem.tasks[editingTaskIdx].due = document.getElementById('taskDue').value;
+                } else {
+                    caseItem.tasks.push({
+                        description: document.getElementById('taskDescription').value,
+                        due: document.getElementById('taskDue').value,
+                        completed: false
+                    });
+                }
+                saveData(data);
+                renderTasks(caseItem);
+                document.getElementById('taskForm').reset();
+                document.getElementById('addTaskModal').classList.remove('active');
+                editingTaskIdx = null;
+                document.querySelector('#addTaskModal .modal-title').textContent = 'Add To-Do';
+            }
+        });
+
+        function toggleTask(caseId, taskIdx) {
+            const data = getData();
+            const caseItem = data.cases.find(c => c.id === caseId);
+            if (caseItem && caseItem.tasks[taskIdx]) {
+                caseItem.tasks[taskIdx].completed = !caseItem.tasks[taskIdx].completed;
+                saveData(data);
+                renderTasks(caseItem);
+            }
+        }
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+                tab.classList.add('active');
+                const tabId = tab.getAttribute('data-tab');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+
+        // Notes saving
+        document.getElementById('notesContent').addEventListener('input', () => {
+            const status = document.getElementById('notesSaveStatus');
+            if (status) {
+                status.textContent = 'Unsaved changes';
+                status.style.color = 'var(--status-pending)';
+            }
+        });
+
+        document.getElementById('saveNotesBtn').addEventListener('click', () => {
+            const status = document.getElementById('notesSaveStatus');
+
+            if (!currentCaseId) {
+                showToast('No case selected. Please select a case first.', 'error');
+                return;
+            }
+
+            const data = getData();
+            const caseItem = data.cases.find(c => c.id === currentCaseId);
+            if (!caseItem) {
+                showToast('Case not found. Please refresh and try again.', 'error');
+                return;
+            }
+
+            caseItem.notes = document.getElementById('notesContent').value;
+            const saved = saveData(data);
+
+            if (saved) {
+                showToast('✓ Notes saved.', 'success');
+                if (status) {
+                    const now = new Date();
+                    status.textContent = `Saved at ${now.toLocaleTimeString()}`;
+                    status.style.color = 'var(--status-active)';
+                }
+            } else {
+                showToast('Failed to save notes. Your storage might be full.', 'error');
+                if (status) {
+                    status.textContent = 'Save failed';
+                    status.style.color = 'var(--status-overdue)';
+                }
+            }
+        });
+
+        // View switching
+        document.querySelectorAll('.view-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const view = btn.getAttribute('data-view');
+                currentView = view;
+
+                document.getElementById('dashboardView').style.display = 'none';
+                document.getElementById('timelineView').style.display = 'none';
+                document.getElementById('caseDetailView').style.display = 'none';
+
+                if (view === 'dashboard') {
+                    document.getElementById('dashboardView').style.display = 'block';
+                    renderDashboard(getData().cases);
+                } else if (view === 'timeline') {
+                    document.getElementById('timelineView').style.display = 'block';
+                    renderTimelineView(getData().cases);
+                } else {
+                    document.getElementById('dashboardView').style.display = 'block';
+                    renderDashboard(getData().cases);
+                }
+            });
+        });
+
+        // Search
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            renderCaseList(getData().cases, e.target.value);
+        });
+
+        // Sync menu
+        document.getElementById('syncMenuBtn').addEventListener('click', () => {
+            document.getElementById('syncMenuDropdown').classList.toggle('active');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.sync-menu')) {
+                document.getElementById('syncMenuDropdown').classList.remove('active');
+            }
+        });
+
+        // Export functionality
+        function blobToDataURL(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(reader.error);
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        document.getElementById('exportBtn').addEventListener('click', async () => {
+            const data = getData();
+
+            // Bundle the actual stored document files into the backup too.
+            // They live in IndexedDB, which is local to THIS browser only —
+            // without this, a backup restored in a different browser (or a
+            // different computer) would show every document as
+            // "couldn't retrieve the stored file" even though the case
+            // details themselves came through fine.
+            const documentFiles = {};
+            let totalFileBytes = 0;
+            let skippedForSize = 0;
+            const FILE_EXPORT_BUDGET = 14 * 1024 * 1024; // headroom under the 16MiB save cap
+            for (const caseItem of (data.cases || [])) {
+                for (const doc of (caseItem.documents || [])) {
+                    if (!doc.fileKey || documentFiles[doc.fileKey]) continue;
+                    try {
+                        const blob = await idbGetFile(doc.fileKey);
+                        if (!blob) continue;
+                        if (totalFileBytes + blob.size > FILE_EXPORT_BUDGET) { skippedForSize++; continue; }
+                        documentFiles[doc.fileKey] = await blobToDataURL(blob);
+                        totalFileBytes += blob.size;
+                    } catch (err) {
+                        console.error('Could not include a stored file in the backup', err);
+                    }
+                }
+            }
+
+            const exportPayload = Object.assign({}, data, { documentFiles });
+            const dataStr = JSON.stringify(exportPayload, null, 2);
+
+            try {
+                const downloads = await getDownloadsCapability();
+                if (downloads) {
+                    await downloads.save({
+                        filename: `case-tracker-backup-${new Date().toISOString().split('T')[0]}.json`,
+                        data: dataStr
+                    });
+                } else {
+                    // Fallback for viewers without downloads capability
+                    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                    const url = URL.createObjectURL(dataBlob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `case-tracker-backup-${new Date().toISOString().split('T')[0]}.json`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                }
+                showToast(skippedForSize > 0
+                    ? `✓ Backup downloaded — ${skippedForSize} large file(s) were left out to keep the backup a manageable size.`
+                    : '✓ Backup downloaded, including your stored documents.', 'success');
+            } catch (err) {
+                console.error('Export failed:', err);
+                showToast('Export failed: ' + err.message, 'warning');
+            }
+            document.getElementById('syncMenuDropdown').classList.remove('active');
+        });
+
+
+
+        // Initialization now happens in boot(), called after a successful login (see checkExistingSession above).
+    </script>
+</body>
+</html>
